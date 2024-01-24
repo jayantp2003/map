@@ -1,45 +1,49 @@
-import { APIProvider, Map, Marker, useMap } from '@vis.gl/react-google-maps';
-import React, { useRef } from 'react';
+import { APIProvider, Map, Marker, useMap, useMapsLibrary } from '@vis.gl/react-google-maps';
+import React, { useRef, useState } from 'react';
 import './GM.css';
 import { useEffect } from 'react';
 
-// var map = null;
 
+var map = null;
 
-// const MyComponent = (props) => {
-//     const map1 = useMap();
-//     // props.setMap(map);
-//     map = map1;
-//     useEffect(() => {
-//         if (!map) return;
+const MyComponent = () => {
+    map = useMap();
+    return <></>;
+};
 
-//         // do something with the map instance
-//     }, [map]);
-
-//     return <>...</>;
-// };
 
 function GM2() {
     const position = { lat: 61.2176, lng: -149.8997 };
-    const [center, setCenter] = React.useState(position);
-    const [gasAmount, setGasAmount] = React.useState();
-    const [mileage, setMileage] = React.useState();
-    const [fullCapacity, setFullCapacity] = React.useState();
-    const [formVisible, setFormVisible] = React.useState(true);
+    const [center, setCenter] = useState(position);
+    const [gasAmount, setGasAmount] = useState();
+    const [mileage, setMileage] = useState();
+    const [fullCapacity, setFullCapacity] = useState();
+    const [formVisible, setFormVisible] = useState(true);
     const startref = useRef(null);
-    const [startLocation, setStartLocation] = React.useState('');
+    const [startLocation, setStartLocation] = useState('');
     const destinationref = useRef(null);
-    const [destinationLocation, setDestinationLocation] = React.useState('');
+    const [gasStations, setGasStations] = useState([]);
+    const [destinationLocation, setDestinationLocation] = useState('');
+    const place1 = useMapsLibrary('places');
     // const directionsService = new window.google.maps.DirectionsService();
     // const directionsRenderer = new window.google.maps.DirectionsRenderer();
-    const map = useMap();
-    // const [map, setMap] = React.useState(null);
+    // const map = useMap();
+    // const [map, setMap] = useState(null);
+    const [markers, setMarkers] = useState([]);
+
+    var gas_station = [];
+
+    var closeGasStation = [];
+
+    useEffect(() => {
+        if (!map) return;
+
+    }, []);
 
 
 
-    const [markers, setMarkers] = React.useState([]);
     const watchUserPosition = () => {
-        const watchId = navigator.geolocation.watchPosition(
+        navigator.geolocation.getCurrentPosition(
             function (position) {
                 const updatedCenter = {
                     lat: position.coords.latitude,
@@ -53,7 +57,7 @@ function GM2() {
             }
         );
 
-        return () => navigator.geolocation.clearWatch(watchId);
+        return;
     };
 
 
@@ -66,6 +70,8 @@ function GM2() {
     };
 
 
+
+
     function calculateAndDisplayRoute() {
         console.log('Calculating route...');
         var start = startLocation;
@@ -74,16 +80,16 @@ function GM2() {
         var mileage1 = parseFloat(mileage);
         var fullCapacity1 = parseFloat(fullCapacity);
 
-        var distanceStep = fullCapacity * mileage * 1000; // Convert km to meters
+        var distanceStep = fullCapacity1 * mileage1 * 1000; // Convert km to meters
 
         var geocoder = new window.google.maps.Geocoder();
 
         geocoder.geocode({ 'address': start }, function (startResults, startStatus) {
-            if (startStatus == window.google.maps.GeocoderStatus.OK) {
+            if (startStatus === window.google.maps.GeocoderStatus.OK) {
                 var startLatLng = startResults[0].geometry.location;
 
                 geocoder.geocode({ 'address': destination }, function (destResults, destStatus) {
-                    if (destStatus == window.google.maps.GeocoderStatus.OK) {
+                    if (destStatus === window.google.maps.GeocoderStatus.OK) {
                         var destinationLatLng = destResults[0].geometry.location;
 
                         var request = {
@@ -94,17 +100,20 @@ function GM2() {
 
                         var directionsService = new window.google.maps.DirectionsService();
                         var directionsRenderer = new window.google.maps.DirectionsRenderer();
+                        // directionsRenderer.setMap(map);
 
                         directionsService.route(request, function (response, status) {
-                            if (status == 'OK') {
-                                toggleFormDrawer();
-                                directionsRenderer.setDirections(response);
-
-                                var dest = window.google.maps.geometry.spherical.computeDistanceBetween(startLatLng, destinationLatLng);
-                                console.log('gasAmount:', gasAmount);
-                                console.log('mileage:', mileage);
-                                console.log('fullCapacity:', fullCapacity);
-                                var dist = gasAmount * mileage * 1000;
+                            if (status === 'OK') {
+                                // toggleFormDrawer();
+                                console.log(response);
+                                // directionsRenderer.setDirections(response);
+                                console.log(response);
+                                console.log(response.routes[0].legs[0].distance['value'])
+                                var dest = response.routes[0].legs[0].distance['value'];
+                                console.log('gasAmount:', gasAmount1);
+                                console.log('mileage:', mileage1);
+                                console.log('fullCapacity:', fullCapacity1);
+                                var dist = gasAmount1 * mileage1 * 1000;
                                 console.log('Distance between start and destination:', dest);
                                 console.log('Distance to travel:', dist);
 
@@ -113,12 +122,106 @@ function GM2() {
                                     console.log('Coordinates at', dist / 1000, 'km along the route:', coordinatesAtDistance);
 
                                     var optimizedCoordinates = findClosestPointOnRoute(response, coordinatesAtDistance);
-                                    console.log('Optimized Coordinates on Route:', optimizedCoordinates);
+                                    // console.log('Optimized Coordinates on Route:', optimizedCoordinates);
 
-                                    findGasStationsNearby(optimizedCoordinates);
+                                    console.log('Finding gas stations near:', optimizedCoordinates.lat(), optimizedCoordinates.lng());
+
+                                    var lat = optimizedCoordinates.lat();
+                                    var lng = optimizedCoordinates.lng();
+
+                                    setGasStations(prevGasStations => [...prevGasStations, { lat: lat, lng: lng, title: 'Gas Station' }]);
+
+                                    gas_station.push({ lat: lat, lng: lng, title: 'Gas Station' });
+
+                                    // setGasStations([...gasStations, { lat: optimizedCoordinates.lat(), lng: optimizedCoordinates.lng(), title: 'Gas Station' }]);
+                                    // console.log(gasStations);
+
+                                    const val = { lat: optimizedCoordinates.lat(), lng: optimizedCoordinates.lng() };
+
+                                    findGasStationsNearby(val);
                                     dist += distanceStep;
                                 }
+
+                                console.log(gas_station);
+                                // setStat(mark);
+                                // setGasStations(prevGasStations => [...prevGasStations, ...mark]);
+                                // console.log(gasStations);
+
+
+
+
                                 console.log('Final distance:', dist);
+                                closeGasStation.map((marker, index) => (
+                                    new window.google.maps.Marker({
+                                        position: { lat: marker.lat, lng: marker.lng },
+                                        map: map,
+                                    })
+                                ));
+
+                                recenterMap(response);
+
+
+
+
+                            } else {
+                                console.error('Directions request failed with status:', status);
+                            }
+                        });
+                    } else {
+                        console.error('Geocode for destination failed with status:', destStatus);
+                    }
+                });
+            } else {
+                console.error('Geocode for start location failed with status:', startStatus);
+            }
+        });
+        calculateAndDisplayRoute1();
+    }
+
+    function calculateAndDisplayRoute1() {
+        console.log('Calculating route...');
+        var start = startLocation;
+        var destination = destinationLocation;
+        var gasAmount1 = parseFloat(gasAmount);
+        var mileage1 = parseFloat(mileage);
+        var fullCapacity1 = parseFloat(fullCapacity);
+
+        var distanceStep = fullCapacity1 * mileage1 * 1000; // Convert km to meters
+
+        var geocoder = new window.google.maps.Geocoder();
+
+        geocoder.geocode({ 'address': start }, function (startResults, startStatus) {
+            if (startStatus === window.google.maps.GeocoderStatus.OK) {
+                var startLatLng = startResults[0].geometry.location;
+
+                geocoder.geocode({ 'address': destination }, function (destResults, destStatus) {
+                    if (destStatus === window.google.maps.GeocoderStatus.OK) {
+                        var destinationLatLng = destResults[0].geometry.location;
+
+                        var waypoints = gas_station.map(function (gasStation) {
+                            return {
+                                location: new window.google.maps.LatLng(gasStation.lat, gasStation.lng),
+                                stopover: true
+                            };
+                        });
+
+                        var request = {
+                            origin: startLatLng,
+                            destination: destinationLatLng,
+                            waypoints: waypoints,
+                            optimizeWaypoints: true,
+                            travelMode: 'DRIVING',
+                        };
+
+                        var directionsService = new window.google.maps.DirectionsService();
+                        var directionsRenderer = new window.google.maps.DirectionsRenderer();
+                        directionsRenderer.setMap(map);
+
+                        directionsService.route(request, function (response, status) {
+                            if (status === 'OK') {
+                                toggleFormDrawer();
+                                console.log(response);
+                                directionsRenderer.setDirections(response);
                                 recenterMap(response);
                             } else {
                                 console.error('Directions request failed with status:', status);
@@ -184,21 +287,66 @@ function GM2() {
     function findGasStationsNearby(coordinates) {
         var request = {
             location: coordinates,
-            radius: 15000,
+            radius: 5000,
             types: ['gas_station'],
         };
 
-        var service = new window.google.maps.places.PlacesService();
+        var service = new place1.PlacesService(map);
 
         service.nearbySearch(request, function (results, status) {
-            if (status == window.google.maps.places.PlacesServiceStatus.OK) {
+            if (status === place1.PlacesServiceStatus.OK) {
                 var closestGasStation = findClosestGasStation(results, coordinates);
                 console.log('Closest Gas Station:', closestGasStation);
-                setMarkers([...markers, { lat: closestGasStation.geometry.location.lat(), lng: closestGasStation.geometry.location.lng(), title: closestGasStation.name, icon: 'https://maps.google.com/mapfiles/ms/icons/gas.png' }]);
+                new window.google.maps.Marker({
+                    position: { lat: closestGasStation.geometry.location.lat(), lng: closestGasStation.geometry.location.lng() },
+                    map: map,
+                    title: closestGasStation.name,
+                    icon: 'https://maps.google.com/mapfiles/ms/icons/gas.png'
+                });
+                closeGasStation.push({
+                    lat: closestGasStation.geometry.location.lat(),
+                    lng: closestGasStation.geometry.location.lng(),
+                    title: closestGasStation.name,
+                    icon: 'https://maps.google.com/mapfiles/ms/icons/gas.png'
+                });
+                // setMarkers(prevMarkers => [
+                //     ...prevMarkers,
+                //     {
+                //         lat: closestGasStation.geometry.location.lat(),
+                //         lng: closestGasStation.geometry.location.lng(),
+                //         title: closestGasStation.name,
+                //         icon: 'https://maps.google.com/mapfiles/ms/icons/gas.png'
+                //     }
+                // ]);
+                // console.log(markers);
             } else {
                 console.error('Places request failed with status:', status);
             }
         });
+
+        console.log(closeGasStation);
+
+        closeGasStation.map((marker, index) => (
+            new window.google.maps.Marker({
+                position: { lat: marker.lat, lng: marker.lng },
+                map: map,
+                title: marker.name,
+                icon: 'https://maps.google.com/mapfiles/ms/icons/gas.png'
+            })
+        ));
+
+
+        // var service = new window.google.maps.places.PlacesService();
+
+        // service.nearbySearch(request, function (results, status) {
+        //     if (status === window.google.maps.places.PlacesServiceStatus.OK) {
+        //         var closestGasStation = findClosestGasStation(results, coordinates);
+        //         console.log('Closest Gas Station:', closestGasStation);
+        //         setMarkers([...markers, { lat: closestGasStation.geometry.location.lat(), lng: closestGasStation.geometry.location.lng(), title: closestGasStation.name, icon: 'https://maps.google.com/mapfiles/ms/icons/gas.png' }]);
+        //     } else {
+        //         console.error('Places request failed with status:', status);
+        //     }
+        // });
     }
 
     function findClosestGasStation(gasStations, referencePoint) {
@@ -280,11 +428,14 @@ function GM2() {
         <div className="map-container">
             <APIProvider apiKey={'AIzaSyA-YR1-sS6nUptgWbWTWgEeuzwNdmY6NSg'} libraries={['places']} onLoad={getLoc} >
                 <Map id={'mapid'} center={center} zoom={18} style={{ height: '100vh', width: '100%' }}>
-
-                    {markers.map((marker, index) => (
-                        < Marker key={index} longitude={marker.lng} latitude={marker.lat} icon={marker.icon} title={marker.title} />
+                    <MyComponent />
+                    {/* {markers.map((marker, index) => (
+                        <Marker key={index} longitude={marker.lng} latitude={marker.lat} icon={marker.icon} title={marker.title} />
                     ))}
-                    <Marker position={center} />
+                    {gas_station.map((marker, index) => (console.log(marker)(
+                        <Marker key={index} longitude={marker.lng} latitude={marker.lat} title={marker.title} />
+                    )))} */}
+                    {/* <Marker position={center} /> */}
                 </Map>
             </APIProvider>
 
@@ -361,7 +512,7 @@ function GM2() {
                             id="gas-amount"
                             style={{ width: '100%', padding: '8px', boxSizing: 'border-box', borderRadius: '3px', border: '1px solid #ccc' }}
                             placeholder="Enter gas amount"
-                            value={gasAmount}
+                            // value={gasAmount}
                             onChange={(e) => setGasAmount(e.target.value)}
                             required
                         />
@@ -374,7 +525,7 @@ function GM2() {
                             id="mileage"
                             style={{ width: '100%', padding: '8px', boxSizing: 'border-box', borderRadius: '3px', border: '1px solid #ccc' }}
                             placeholder="Enter mileage"
-                            value={mileage}
+                            // value={mileage}
                             onChange={(e) => setMileage(e.target.value)}
                             required
                         />
@@ -387,7 +538,7 @@ function GM2() {
                             id="full-capacity"
                             style={{ width: '100%', padding: '8px', boxSizing: 'border-box', borderRadius: '3px', border: '1px solid #ccc' }}
                             placeholder="Enter tank capacity"
-                            value={fullCapacity}
+                            // value={fullCapacity}
                             onChange={(e) => setFullCapacity(e.target.value)}
                             required
                         />
