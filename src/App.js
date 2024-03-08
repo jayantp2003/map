@@ -5,7 +5,7 @@ import { APIProvider } from '@vis.gl/react-google-maps'
 export default function App() {
   return (
     <>
-      <APIProvider apiKey={'AIzaSyA-YR1-sS6nUptgWbWTWgEeuzwNdmY6NSg'} libraries={['places']} >
+      <APIProvider apiKey={'api-key'} libraries={['places']} >
         <GoogleMap />
       </APIProvider>
     </>
